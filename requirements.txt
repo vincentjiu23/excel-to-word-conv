@@ -1,0 +1,19 @@
+# Core Document Processing
+openpyxl>=3.1.5
+python-docx>=1.2.0
+lxml>=6.0.0
+
+# Data Validation & Modeling
+pydantic>=2.10.0
+
+# Fuzzy String Matching & Algorithms
+rapidfuzz>=3.10.0
+
+# Testing & Code Quality
+pytest>=8.3.0
+pytest-cov>=6.0.0
+
+# Optional GUI/Web Runner for Local Testing
+fastapi>=0.115.0
+uvicorn>=0.32.0
+python-multipart>=0.0.18

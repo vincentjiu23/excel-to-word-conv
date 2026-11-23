@@ -1,0 +1,22 @@
+[package]
+name = "smart-document-converter"
+version = "1.0.0"
+description = "Smart Document Converter - Dynamic Excel to Word Conversion Desktop Application"
+authors = ["vincent <vincentjius@gmail.com>"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full", "process"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
