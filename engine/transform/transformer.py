@@ -5,7 +5,7 @@ Never mutates original source records.
 
 from datetime import date, datetime
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Tuple, Optional
 from ..models.mapping import FieldMapping, FieldTransformation
 
 
