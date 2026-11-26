@@ -212,6 +212,7 @@ class ExcelAnalyzer:
                 formula_count=formula_count,
                 available_sheets=available_sheets,
                 preview_records=preview_records,
+                all_records=all_records,
             )
 
         finally:

@@ -1,3 +1,6 @@
+
+import { invoke } from '@tauri-apps/api/core';
+
 import {
   FieldMapping,
   FieldModel,
@@ -5,32 +8,53 @@ import {
   TargetSchema,
   ValidationResult,
   ConversionRun,
+  OutputFormat,
+  TemplateType,
 } from '../types';
 
 export class ApiService {
   private static isTauri(): boolean {
-    return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    return (
+      typeof window !== 'undefined' &&
+      '__TAURI_INTERNALS__' in window
+    );
   }
 
-  static async executeCommand<T>(command: string, payload: Record<string, any> = {}): Promise<T> {
-    const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  static async executeCommand<T>(
+    command: string,
+    payload: Record<string, any> = {}
+  ): Promise<T> {
+    const requestId = `req_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 7)}`;
 
-    // Tauri 2 IPC
+    // =====================================================
+    // TAURI DESKTOP MODE
+    // =====================================================
+
     if (this.isTauri()) {
       try {
-        const tauriCore = (window as any).__TAURI__?.core;
-        if (tauriCore && typeof tauriCore.invoke === 'function') {
-          return await tauriCore.invoke(command, payload);
-        }
+        return await invoke<T>(command, { payload });
       } catch (err) {
-        console.warn('Tauri invoke failed, falling back to HTTP IPC:', err);
+        console.error(`Tauri command failed: ${command}`, err);
+
+        throw new Error(
+          `Tauri IPC failed (${command}): ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
       }
     }
 
-    // HTTP IPC Fallback
+    // =====================================================
+    // BROWSER / FASTAPI MODE
+    // =====================================================
+
     const response = await fetch('/api/ipc', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         command,
         request_id: requestId,
@@ -41,44 +65,106 @@ export class ApiService {
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`IPC Request failed (${response.status}): ${errText}`);
+
+      throw new Error(
+        `IPC Request failed (${response.status}): ${errText}`
+      );
     }
 
     const json = await response.json();
+
     if (!json.success) {
-      throw new Error(json.error || 'Unknown IPC Engine Error');
+      throw new Error(
+        json.error || 'Unknown IPC Engine Error'
+      );
     }
 
     return json.data as T;
   }
 
+  // =====================================================
+  // EXCEL INSPECTION
+  // =====================================================
+
   static async inspectExcel(filePath: string) {
-    return this.executeCommand<{ sheets: any[] }>('inspect_excel', { file_path: filePath });
+    return this.executeCommand<{ sheets: any[] }>(
+      'inspect_excel',
+      {
+        file_path: filePath,
+      }
+    );
   }
 
-  static async analyzeExcel(filePath: string, sheetName?: string, headerOverride?: number) {
-    const res = await this.executeCommand<{ source_schema: SourceSchema }>('analyze_excel', {
+  // =====================================================
+  // EXCEL ANALYSIS
+  // =====================================================
+
+  static async analyzeExcel(
+    filePath: string,
+    sheetName?: string,
+    headerOverride?: number
+  ) {
+    const res = await this.executeCommand<{
+      source_schema: SourceSchema;
+    }>('analyze_excel', {
       file_path: filePath,
       sheet_name: sheetName,
       header_row_override: headerOverride,
     });
+
     return res.source_schema;
   }
 
+  // =====================================================
+  // WORD ANALYSIS
+  // =====================================================
+
   static async analyzeWord(filePath: string) {
-    const res = await this.executeCommand<{ target_schema: TargetSchema }>('analyze_word', {
+    const res = await this.executeCommand<{
+      target_schema: TargetSchema;
+    }>('analyze_word', {
       file_path: filePath,
     });
+
     return res.target_schema;
   }
 
-  static async generateMappings(sourceFields: FieldModel[], targetFields: FieldModel[]) {
-    const res = await this.executeCommand<{ mappings: FieldMapping[] }>('generate_mappings', {
+  // =====================================================
+  // PDF TEMPLATE ANALYSIS
+  // =====================================================
+
+  static async analyzePdfTemplate(filePath: string) {
+    const res = await this.executeCommand<{
+      target_schema: TargetSchema;
+      template_type: 'pdf';
+    }>('analyze_pdf_template', {
+      file_path: filePath,
+    });
+
+    return res.target_schema;
+  }
+
+  // =====================================================
+  // INTELLIGENT MAPPING
+  // =====================================================
+
+  static async generateMappings(
+    sourceFields: FieldModel[],
+    targetFields: FieldModel[]
+  ) {
+    const res = await this.executeCommand<{
+      mappings: FieldMapping[];
+    }>('generate_mappings', {
       source_fields: sourceFields,
       target_fields: targetFields,
     });
+
     return res.mappings;
   }
+
+  // =====================================================
+  // CONVERSION PREVIEW
+  // =====================================================
 
   static async previewConversion(
     records: Record<string, any>[],
@@ -86,21 +172,28 @@ export class ApiService {
     recordIndices?: number[],
     searchQuery?: string
   ) {
-    return this.executeCommand<{ total_filtered: number; preview_records: Record<string, any>[] }>(
-      'preview_conversion',
-      {
-        records,
-        mappings,
-        record_indices: recordIndices,
-        search_query: searchQuery,
-      }
-    );
+    return this.executeCommand<{
+      total_filtered: number;
+      preview_records: Record<string, any>[];
+    }>('preview_conversion', {
+      records,
+      mappings,
+      record_indices: recordIndices,
+      search_query: searchQuery,
+    });
   }
+
+  // =====================================================
+  // EXECUTE CONVERSION
+  // =====================================================
 
   static async executeConversion(params: {
     excelPath: string;
-    wordPath: string;
+    wordPath?: string;
+    templatePath?: string;
+    templateType?: TemplateType;
     outputPath?: string;
+    outputFormat?: OutputFormat;
     sheetName?: string;
     headerOverride?: number;
     tableIndex?: number;
@@ -109,26 +202,60 @@ export class ApiService {
     mappings: FieldMapping[];
     sessionId?: string;
   }) {
-    return this.executeCommand<{
-      generation: { output_path: string; records_written: number; strategy_used: string; file_size_bytes: number };
-      validation: ValidationResult;
-      session_id: string;
-    }>('execute_conversion', {
+    const templateType = params.templateType ?? 'word';
+
+    const templatePath =
+      params.templatePath ?? params.wordPath;
+
+    if (!templatePath) {
+      throw new Error('Template path is required.');
+    }
+
+    const payload: Record<string, any> = {
       excel_path: params.excelPath,
-      word_path: params.wordPath,
       output_path: params.outputPath,
+      output_format: params.outputFormat ?? 'docx',
       sheet_name: params.sheetName,
       header_row_override: params.headerOverride,
-      table_index: params.tableIndex || 0,
+      table_index: params.tableIndex ?? 0,
       strategy_override: params.strategyOverride,
       record_indices: params.recordIndices,
       mappings: params.mappings,
       session_id: params.sessionId,
-    });
+    };
+
+    if (templateType === 'pdf') {
+      payload.template_path = templatePath;
+    } else {
+      payload.word_path = templatePath;
+    }
+
+    return this.executeCommand<{
+      generation: {
+        output_path: string;
+        records_written: number;
+        pages_written?: number;
+        strategy_used: string;
+        file_size_bytes: number;
+        output_format?: OutputFormat;
+        template_type?: TemplateType;
+      };
+      validation: ValidationResult;
+      session_id: string;
+    }>('execute_conversion', payload);
   }
 
+  // =====================================================
+  // CONVERSION HISTORY
+  // =====================================================
+
   static async getHistory(limit = 20) {
-    const res = await this.executeCommand<{ runs: ConversionRun[] }>('get_history', { limit });
+    const res = await this.executeCommand<{
+      runs: ConversionRun[];
+    }>('get_history', {
+      limit,
+    });
+
     return res.runs;
   }
 }

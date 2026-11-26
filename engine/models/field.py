@@ -24,6 +24,7 @@ class DataType(str, Enum):
 class SourceType(str, Enum):
     EXCEL = "excel"
     WORD = "word"
+    PDF = "pdf"
 
 
 class FieldModel(BaseModel):

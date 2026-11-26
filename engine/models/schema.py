@@ -32,6 +32,7 @@ class SourceSchema(BaseModel):
     formula_count: int = 0
     available_sheets: List[ExcelSheetInfo] = Field(default_factory=list)
     preview_records: List[Dict[str, Any]] = Field(default_factory=list)
+    all_records: List[Dict[str, Any]] = Field(default_factory=list, exclude=True)
 
 
 class TargetDocumentStructure(BaseModel):

@@ -49,6 +49,25 @@ src-tauri/target/
 Thumbs.db
 .DS_Store
 
+# Build artifacts
+build/
+dist/
+.coverage
+conversion_history.db
+conversion_history.db-shm
+conversion_history.db-wal
+
+# Generated test outputs
+tests/fixtures/generated/
+tests/lo_test.docx
+tests/lo_test.pdf
+
+# Tauri generated files
+src-tauri/gen/
+
+# Temporary test files
+download_test.pdf
+
 # Application Output / Cache
 output/
 tmp/

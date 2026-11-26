@@ -1,4 +1,4 @@
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
@@ -9,9 +9,12 @@ use commands::*;
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            pick_file,
+            save_output_file,
             inspect_excel,
             analyze_excel,
             analyze_word,
+            analyze_pdf_template,
             generate_mappings,
             preview_conversion,
             execute_conversion,

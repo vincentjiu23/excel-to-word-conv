@@ -1,3 +1,7 @@
+
+export type OutputFormat = 'docx' | 'pdf';
+export type TemplateType = 'word' | 'pdf';
+
 export type DataType =
   | 'string'
   | 'integer'
@@ -16,15 +20,15 @@ export type MappingStatus =
   | 'needs_review'
   | 'ambiguous'
   | 'unmatched'
-  | 'ignored'
-  | 'manually_assigned';
+  | 'manually_assigned'
+  | 'ignored';
 
 export interface FieldModel {
   field_id: string;
   original_name: string;
   normalized_name: string;
   data_type: DataType;
-  source_type: 'excel' | 'word';
+  source_type: 'excel' | 'word' | 'pdf';
   location: Record<string, any>;
   sample_values: any[];
   null_count: number;
